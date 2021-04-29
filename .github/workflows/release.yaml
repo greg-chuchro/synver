@@ -1,0 +1,17 @@
+name: release
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@main
+    - uses: actions/setup-dotnet@main
+    - run: dotnet pack --configuration Release --output .
+      shell: bash
+    - run: dotnet nuget push $(find *.nupkg) --source https://www.nuget.org --api-key ${{secrets.NUGET_API_KEY}}
+      shell: bash
