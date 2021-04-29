@@ -5,7 +5,7 @@ using System.Reflection;
 using System.Text;
 using System.Text.RegularExpressions;
 
-namespace Synver {
+namespace Ghbvft6.Synver {
 
     static class Extension {
         public static string ToUniqueString(this FieldInfo fielfInfo) {
