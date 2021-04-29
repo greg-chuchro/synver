@@ -23,6 +23,10 @@ namespace Synver {
 
     class Program {
 
+        class Configuration {
+            public static string version = "";
+        }
+
         enum DifferenceDegree { None = 1, NonBreaking = 2, Breaking = 4 }
 
         record Version(int major, int minor, int patch) {
@@ -274,18 +278,24 @@ namespace Synver {
             PrintDifferences(fieldInfosDiff, propertyInfosDiff, methodInfosDiff);
         }
 
-        private static void CompareAssemblies(string version, string path1, string path2) {
+        private static void CompareAssemblies(string path1, string path2) {
             Assembly assembly1 = Assembly.LoadFrom(path1);
             Assembly assembly2 = Assembly.LoadFrom(path2);
 
-            CompareAssemblies(new Version(version), assembly1, assembly2);
+            var assemblyVersion = assembly1.GetName().Version!;
+            var version = Configuration.version != "" ? new Version(Configuration.version) : new Version(assemblyVersion.Major, assemblyVersion.Minor, assemblyVersion.Build);
+
+            CompareAssemblies(version, assembly1, assembly2);
         }
 
         static void Main(string[] args) {
             try {
-                CompareAssemblies(args[0], args[1], args[2]);
-            } catch (Exception) {
-                Console.WriteLine("synver VERSION NEW_DLL_PATH OLD_DLL_PATH");
+                Configuration.version = args.Count() > 2 ? args[2] : Configuration.version;
+                CompareAssemblies(args[0], args[1]);
+            } catch (Exception e) {
+                Console.WriteLine("synver NEW_DLL_PATH OLD_DLL_PATH [VERSION]");
+                Console.WriteLine("");
+                Console.WriteLine(e);
             }
         }
     }
