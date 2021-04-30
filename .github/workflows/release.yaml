@@ -10,8 +10,16 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@main
+      with:
+        fetch-depth: 2
     - uses: actions/setup-dotnet@main
-    - run: dotnet pack --configuration Release --output .
-      shell: bash
-    - run: dotnet nuget push $(find *.nupkg) --source https://www.nuget.org --api-key ${{secrets.NUGET_API_KEY}}
-      shell: bash
+    - id: dotnet-bump-version
+      uses: greg-chuchro/dotnet-bump-version@main
+    - name: 'amend last commit'
+      run: |
+        git config --global user.name "dotnet-version-bump"
+        git config --global user.email ""
+        git commit --amend -m ${{steps.dotnet-bump-version.outputs.version-info}}
+        git push --force
+    - run: echo "NUPKG=$(dotnet pack $(find . -name *.csproj | grep --invert-match Test) --configuration Release | sed -n 's/.*\s[^/]*\(\/.*nupkg\).*/\1/p')" >> $GITHUB_ENV
+    - run: dotnet nuget push ${{env.NUPKG}} --source https://www.nuget.org --api-key ${{secrets.NUGET_API_KEY}}
