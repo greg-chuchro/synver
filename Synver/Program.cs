@@ -279,8 +279,8 @@ namespace Ghbvft6.Synver {
         }
 
         private static void CompareAssemblies(string path1, string path2) {
-            Assembly assembly1 = Assembly.LoadFrom(path1);
-            Assembly assembly2 = Assembly.LoadFrom(path2);
+            Assembly assembly1 = Assembly.LoadFile(path1);
+            Assembly assembly2 = Assembly.LoadFile(path2);
 
             var assemblyVersion = assembly1.GetName().Version!;
             var version = Configuration.version != "" ? new Version(Configuration.version) : new Version(assemblyVersion.Major, assemblyVersion.Minor, assemblyVersion.Build);
