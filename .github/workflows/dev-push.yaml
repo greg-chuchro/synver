@@ -16,14 +16,14 @@ jobs:
     - run: dotnet --version
     - name: check current version
       run: |
-        echo "OLD_VERSION=$(sed -n 's/<Version>\(.*\)<\/Version>/\1/p' $(find . -name *.csproj | grep --invert-match Test))" >> $GITHUB_ENV
-        echo "OLD_MINOR_VERSION=$(sed -n 's/<Version>[0-9]*\.\([0-9]*\).*<\/Version>/\1/p' $(find . -name *.csproj | grep --invert-match Test))" >> $GITHUB_ENV
+        echo "OLD_VERSION=$(sed -n 's/.*<Version>\(.*\)<\/Version>.*/\1/p' $(find . -name *.csproj | grep --invert-match Test))" >> $GITHUB_ENV
+        echo "OLD_MINOR_VERSION=$(sed -n 's/.*<Version>[0-9]*\.\([0-9]*\).*<\/Version>.*/\1/p' $(find . -name *.csproj | grep --invert-match Test))" >> $GITHUB_ENV
     - id: dotnet-bump-version
       uses: greg-chuchro/dotnet-bump-version@dev
     - name: check bumped version
       run: |
-        echo "NEW_VERSION=$(sed -n 's/<Version>\(.*\)<\/Version>/\1/p' $(find . -name *.csproj | grep --invert-match Test))" >> $GITHUB_ENV
-        echo "NEW_MINOR_VERSION=$(sed -n 's/<Version>[0-9]*\.\([0-9]*\).*<\/Version>/\1/p' $(find . -name *.csproj | grep --invert-match Test))" >> $GITHUB_ENV
+        echo "NEW_VERSION=$(sed -n 's/.*<Version>\(.*\)<\/Version>.*/\1/p' $(find . -name *.csproj | grep --invert-match Test))" >> $GITHUB_ENV
+        echo "NEW_MINOR_VERSION=$(sed -n 's/.*<Version>[0-9]*\.\([0-9]*\).*<\/Version>.*/\1/p' $(find . -name *.csproj | grep --invert-match Test))" >> $GITHUB_ENV
     - name: push to main
       if: ${{env.NEW_MINOR_VERSION == env.OLD_MINOR_VERSION && env.OLD_MINOR_VERSION > 0}}
       run: |
