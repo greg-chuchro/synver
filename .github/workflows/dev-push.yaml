@@ -1,0 +1,76 @@
+name: release
+
+on:
+  push:
+    branches:
+      - dev
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@main
+      with:
+        fetch-depth: 2
+    - uses: actions/setup-dotnet@main
+    - run: dotnet --version
+    - name: check current version
+      run: |
+        echo "OLD_VERSION=$(sed -n 's/<Version>\(.*\)<\/Version>/\1/p' $(find . -name *.csproj | grep --invert-match Test))" >> $GITHUB_ENV
+        echo "OLD_MINOR_VERSION=$(sed -n 's/<Version>[0-9]*\.\([0-9]*\).*<\/Version>/\1/p' $(find . -name *.csproj | grep --invert-match Test))" >> $GITHUB_ENV
+    - id: dotnet-bump-version
+      uses: greg-chuchro/dotnet-bump-version@dev
+    - name: check bumped version
+      run: |
+        echo "NEW_VERSION=$(sed -n 's/<Version>\(.*\)<\/Version>/\1/p' $(find . -name *.csproj | grep --invert-match Test))" >> $GITHUB_ENV
+        echo "NEW_MINOR_VERSION=$(sed -n 's/<Version>[0-9]*\.\([0-9]*\).*<\/Version>/\1/p' $(find . -name *.csproj | grep --invert-match Test))" >> $GITHUB_ENV
+    - name: push to main
+      if: ${{env.NEW_MINOR_VERSION == env.OLD_MINOR_VERSION && env.OLD_MINOR_VERSION > 0}}
+      run: |
+        set +e
+        STASH_COUNT=$(git rev-list --walk-reflogs --count refs/stash)
+        set -e
+        git stash push --include-untracked --quiet
+        set +e
+        NEW_STASH_COUNT=$(git rev-list --walk-reflogs --count refs/stash)
+        set -e
+        git switch --orphan main
+        git pull --depth=1 origin main
+        set +e
+        git cherry-pick dev
+        CP_RESULT=$?
+        set -e
+        if [ $CP_RESULT -ne 0 ]; then
+          git cherry-pick --abort
+        else
+          set +e
+          dotnet test
+          DT_RESULT=$?
+          set -e
+          if [ $DT_RESULT -eq 0 ]; then
+            git push origin main
+          fi
+        fi
+        git switch dev
+        if [ "$NEW_STASH_COUNT" != "$STASH_COUNT" ]; then
+          git stash pop --quiet
+        fi
+        exit 0
+    - name: 'amend last commit'
+      run: |
+        git config --global user.name "dotnet-version-bump"
+        git config --global user.email ""
+        LAST_COMMIT_MESSAGE=$(git show -s --format=%s)
+        MESSAGE=$LAST_COMMIT_MESSAGE$'\n\n'$(echo "${{steps.dotnet-bump-version.outputs.version-info}}")
+        git commit --amend -m "$MESSAGE"
+        git push --force
+    - name: 'tag'
+      if: ${{env.NEW_VERSION != env.OLD_VERSION}}
+      run: |
+        git tag v${{env.NEW_VERSION}}
+        git push origin v${{env.NEW_VERSION}}
+    - name: push to nuget
+      if: ${{env.NEW_VERSION != env.OLD_VERSION}}
+      run: |
+        NUPKG=$(dotnet pack $(find . -name *.csproj | grep --invert-match Test) --configuration Release | sed -n 's/.*\s[^/]*\(\/.*nupkg\).*/\1/p')
+        dotnet nuget push $NUPKG --source https://www.nuget.org --api-key ${{secrets.NUGET_API_KEY}}
