@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Reflection;
 using System.Text;
@@ -9,15 +10,15 @@ namespace Ghbvft6.Synver {
 
     static class Extension {
         public static string ToUniqueString(this FieldInfo fielfInfo) {
-            return $"{fielfInfo.DeclaringType?.FullName} {fielfInfo.Attributes} {fielfInfo}";
+            return $"{fielfInfo.ReflectedType?.FullName} {fielfInfo.Attributes} {fielfInfo}";
         }
 
         public static string ToUniqueString(this PropertyInfo propertyInfo) {
-            return $"{propertyInfo.DeclaringType?.FullName} {propertyInfo.Attributes} {propertyInfo}";
+            return $"{propertyInfo.ReflectedType?.FullName} {propertyInfo.Attributes} {propertyInfo}";
         }
 
         public static string ToUniqueString(this MethodInfo methodInfo) {
-            return $"{methodInfo.DeclaringType?.FullName} {methodInfo.Attributes} {methodInfo}";
+            return $"{methodInfo.ReflectedType?.FullName} {methodInfo.Attributes} {methodInfo}";
         }
     }
 
@@ -272,6 +273,10 @@ namespace Ghbvft6.Synver {
                 ComparePropertyInfoLists(assembly1, assembly2, bindingAttr),
                 CompareMethodInfoLists(assembly1, assembly2, bindingAttr)
             );
+
+            if (differenceDegree == DifferenceDegree.None) {
+                differenceDegree |= File.ReadAllBytes(assembly1.Location).SequenceEqual(File.ReadAllBytes(assembly2.Location)) ? DifferenceDegree.None : DifferenceDegree.NonBreaking;
+            }
 
             Console.WriteLine(version.Bump(differenceDegree));
             Console.WriteLine("");
