@@ -91,7 +91,8 @@ namespace Ghbvft6.Synver {
 
         public static IEnumerable<T> GetMembers<T>(Assembly assembly, Func<Type, BindingFlags, T[]> membersGetter, BindingFlags bindingAttr = BindingFlags.Default) where T : MemberInfo {
             var infos = Enumerable.Empty<T>();
-            foreach (var type in assembly.GetTypes()) {
+            var types = bindingAttr.HasFlag(BindingFlags.NonPublic) ? assembly.GetTypes() : assembly.GetExportedTypes();
+            foreach (var type in types) {
                 infos = infos.Concat(membersGetter(type, bindingAttr));
             }
             return infos;
