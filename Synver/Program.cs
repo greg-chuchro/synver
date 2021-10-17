@@ -1,8 +1,10 @@
-﻿using System;
+﻿using NuGet.Configuration;
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Reflection;
+using System.Runtime.InteropServices;
 using System.Text;
 using System.Text.RegularExpressions;
 
@@ -285,8 +287,18 @@ namespace Ghbvft6.Synver {
         }
 
         private static void CompareAssemblies(string path1, string path2) {
-            Assembly assembly1 = Assembly.LoadFile(path1);
-            Assembly assembly2 = Assembly.LoadFile(path2);
+            var runtimeAssemblies = Directory.GetFiles(RuntimeEnvironment.GetRuntimeDirectory(), "*.dll");
+            var assemblyPaths = new List<string>(runtimeAssemblies);
+
+            var globalPackagesFolder = SettingsUtility.GetGlobalPackagesFolder(Settings.LoadDefaultSettings(null));
+            var globalPackagesLibFolders = Directory.GetDirectories(globalPackagesFolder, "lib", new EnumerationOptions { RecurseSubdirectories = true });
+            foreach (var libFolder in globalPackagesLibFolders) {
+                var assemblies = Directory.GetFiles(libFolder, "*.dll", new EnumerationOptions { RecurseSubdirectories = true });
+                assemblyPaths.AddRange(assemblies);
+            }
+
+            Assembly assembly1 = new MetadataLoadContext(new PathAssemblyResolver(assemblyPaths)).LoadFromAssemblyPath(path1);
+            Assembly assembly2 = new MetadataLoadContext(new PathAssemblyResolver(assemblyPaths)).LoadFromAssemblyPath(path2);
 
             var assemblyVersion = assembly1.GetName().Version!;
             var version = Configuration.version != "" ? new Version(Configuration.version) : new Version(assemblyVersion.Major, assemblyVersion.Minor, assemblyVersion.Build);
@@ -302,6 +314,7 @@ namespace Ghbvft6.Synver {
                 Console.WriteLine("synver NEW_DLL_PATH OLD_DLL_PATH [VERSION]");
                 Console.WriteLine("");
                 Console.WriteLine(e);
+                Environment.Exit(1);
             }
         }
     }
