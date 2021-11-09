@@ -7,7 +7,7 @@
     <TargetFramework>net5.0</TargetFramework>
     <RootNamespace>Ghbvft6.Synver</RootNamespace>
 
-    <Version>0.3.4</Version>
+    <Version>0.3.5</Version>
     <PackAsTool>true</PackAsTool>
     <ToolCommandName>synver</ToolCommandName>
 
@@ -15,7 +15,6 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="NuGet.Configuration" Version="5.11.0" />
     <PackageReference Include="System.Reflection.MetadataLoadContext" Version="5.0.1" />
   </ItemGroup>
 </Project>
