@@ -1,5 +1,4 @@
-﻿using NuGet.Configuration;
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -290,12 +289,11 @@ namespace Ghbvft6.Synver {
             var runtimeAssemblies = Directory.GetFiles(RuntimeEnvironment.GetRuntimeDirectory(), "*.dll");
             var assemblyPaths = new List<string>(runtimeAssemblies);
 
-            var globalPackagesFolder = SettingsUtility.GetGlobalPackagesFolder(Settings.LoadDefaultSettings(null));
-            var globalPackagesLibFolders = Directory.GetDirectories(globalPackagesFolder, "lib", new EnumerationOptions { RecurseSubdirectories = true });
-            foreach (var libFolder in globalPackagesLibFolders) {
-                var assemblies = Directory.GetFiles(libFolder, "*.dll", new EnumerationOptions { RecurseSubdirectories = true });
-                assemblyPaths.AddRange(assemblies);
-            }
+            var assemblies1 = Directory.GetFiles(Path.GetDirectoryName(path1)!, "*.dll", new EnumerationOptions { RecurseSubdirectories = true });
+            assemblyPaths.AddRange(assemblies1);
+
+            var assemblies2 = Directory.GetFiles(Path.GetDirectoryName(path2)!, "*.dll", new EnumerationOptions { RecurseSubdirectories = true });
+            assemblyPaths.AddRange(assemblies2);
 
             Assembly assembly1 = new MetadataLoadContext(new PathAssemblyResolver(assemblyPaths)).LoadFromAssemblyPath(path1);
             Assembly assembly2 = new MetadataLoadContext(new PathAssemblyResolver(assemblyPaths)).LoadFromAssemblyPath(path2);
