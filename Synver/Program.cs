@@ -1,4 +1,5 @@
-﻿using System;
+﻿using NuGet.Configuration;
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -294,6 +295,18 @@ namespace Ghbvft6.Synver {
 
             var assemblies2 = Directory.GetFiles(Path.GetDirectoryName(path2)!, "*.dll", new EnumerationOptions { RecurseSubdirectories = true });
             assemblyPaths.AddRange(assemblies2);
+
+            var globalPackagesFolder = SettingsUtility.GetGlobalPackagesFolder(Settings.LoadDefaultSettings(null));
+            var globalPackagesLibFolders = Directory.GetDirectories(globalPackagesFolder, "lib", new EnumerationOptions { RecurseSubdirectories = true });
+            foreach (var libFolder in globalPackagesLibFolders) {
+                var assemblies = Directory.GetFiles(libFolder, "*.dll", new EnumerationOptions { RecurseSubdirectories = true });
+                foreach (var assembly in assemblies) {
+                    if (assembly.StartsWith(Path.Combine(globalPackagesFolder, "microsoft.netcore.app.runtime"))) { // TODO validate if _correct_
+                        continue; // INFO mscorlib.dll is loaded twice and fails
+                    }
+                    assemblyPaths.Add(assembly);
+                }
+            }
 
             Assembly assembly1 = new MetadataLoadContext(new PathAssemblyResolver(assemblyPaths)).LoadFromAssemblyPath(path1);
             Assembly assembly2 = new MetadataLoadContext(new PathAssemblyResolver(assemblyPaths)).LoadFromAssemblyPath(path2);
