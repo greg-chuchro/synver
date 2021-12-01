@@ -59,17 +59,17 @@ namespace Ghbvft6.Synver {
         }
 
         interface IValuePair<out T> {
-            public T Value1 { get; }
-            public T Value2 { get; }
+            public T baseValue { get; }
+            public T modifiedValue { get; }
         }
 
         class ValuePair<T> : IValuePair<T> {
-            public T Value1 { get; }
-            public T Value2 { get; }
+            public T baseValue { get; }
+            public T modifiedValue { get; }
 
-            public ValuePair(T value1, T value2) {
-                Value1 = value1;
-                Value2 = value2;
+            public ValuePair(T baseValue, T modifiedValue) {
+                this.baseValue = baseValue;
+                this.modifiedValue = modifiedValue;
             }
         }
 
@@ -112,9 +112,10 @@ namespace Ghbvft6.Synver {
             return GetMembers(assembly, (type, bindingAttr) => type.GetMethods(bindingAttr), bindingAttr);
         }
 
-        private static IEnumerableDiff<T> Compare<T>(IEnumerable<T> enumerable1, IEnumerable<T> enumerable2, Func<T, string> nameGetter, Func<T, T, bool> comparator) {
+        // TODO HKT
+        private static IEnumerableDiff<T> Compare<T>(IEnumerable<T> baseEnumerable, IEnumerable<T> modifiedEnumerable, Func<T, string> nameGetter, Func<T, T, bool> comparator) {
             var map = new Dictionary<string, T>();
-            foreach (var element in enumerable1) {
+            foreach (var element in modifiedEnumerable) {
                 try {
                     map.Add(nameGetter(element), element);
                 } catch (System.ArgumentException) {
@@ -125,10 +126,10 @@ namespace Ghbvft6.Synver {
             var missing = new Dictionary<string, T>();
             var different = new List<IValuePair<T>>();
 
-            foreach (T element in enumerable2) {
+            foreach (T element in baseEnumerable) {
                 if (map.ContainsKey(nameGetter(element))) {
                     if (!comparator(map[nameGetter(element)], element)) {
-                        different.Add(new ValuePair<T>(map[nameGetter(element)], element));
+                        different.Add(new ValuePair<T>(element, map[nameGetter(element)]));
                     }
                     map.Remove(nameGetter(element));
 
@@ -144,16 +145,16 @@ namespace Ghbvft6.Synver {
             return new EnumerableDiff<T>(missing.Values, map.Values, different);
         }
 
-        private static IEnumerableDiff<FieldInfo> CompareFieldInfoLists(Assembly assembly1, Assembly assembly2, BindingFlags bindingAttr) {
-            return Compare(GetFields(assembly1, bindingAttr), GetFields(assembly2, bindingAttr),
+        private static IEnumerableDiff<FieldInfo> GetFieldInfoDifferences(Assembly baseAssembly, Assembly modifiedAssembly, BindingFlags bindingAttr) {
+            return Compare(GetFields(baseAssembly, bindingAttr), GetFields(modifiedAssembly, bindingAttr),
                     _ => _.ToUniqueString(),
                     (a, b) =>
                         a.ToUniqueString() == b.ToUniqueString()
                     );
         }
 
-        private static IEnumerableDiff<PropertyInfo> ComparePropertyInfoLists(Assembly assembly1, Assembly assembly2, BindingFlags bindingAttr) {
-            return Compare(GetProperties(assembly1, bindingAttr), GetProperties(assembly2, bindingAttr),
+        private static IEnumerableDiff<PropertyInfo> GetPropertyInfoDifferences(Assembly baseAssembly, Assembly modifiedAssembly, BindingFlags bindingAttr) {
+            return Compare(GetProperties(baseAssembly, bindingAttr), GetProperties(modifiedAssembly, bindingAttr),
                     _ => _.ToUniqueString(),
                     (a, b) =>
                         a.ToUniqueString() == b.ToUniqueString() &&
@@ -164,8 +165,8 @@ namespace Ghbvft6.Synver {
                     );
         }
 
-        private static IEnumerableDiff<MethodInfo> CompareMethodInfoLists(Assembly assembly1, Assembly assembly2, BindingFlags bindingAttr) {
-            return Compare(GetMethods(assembly1, bindingAttr), GetMethods(assembly2, bindingAttr),
+        private static IEnumerableDiff<MethodInfo> GetMethodInfoDifferences(Assembly baseAssembly, Assembly modifiedAssembly, BindingFlags bindingAttr) {
+            return Compare(GetMethods(baseAssembly, bindingAttr), GetMethods(modifiedAssembly, bindingAttr),
                     _ => _.ToUniqueString(),
                     (a, b) =>
                         a.ToUniqueString() == b.ToUniqueString() &&
@@ -179,21 +180,21 @@ namespace Ghbvft6.Synver {
             var differenceDegree = DifferenceDegree.None;
 
             foreach (var info in fieldDifferences.Different) {
-                if (info.Value1.Attributes == info.Value2.Attributes) {
+                if (info.modifiedValue.Attributes == info.baseValue.Attributes) {
                     differenceDegree |= DifferenceDegree.NonBreaking;
                 } else {
                     differenceDegree |= DifferenceDegree.Breaking;
                 }
             }
             foreach (var info in propertyDifferences.Different) {
-                if (info.Value1.Attributes == info.Value2.Attributes) {
+                if (info.modifiedValue.Attributes == info.baseValue.Attributes) {
                     differenceDegree |= DifferenceDegree.NonBreaking;
                 } else {
                     differenceDegree |= DifferenceDegree.Breaking;
                 }
             }
             foreach (var info in methodDifferences.Different) {
-                if (info.Value1.Attributes == info.Value2.Attributes) {
+                if (info.modifiedValue.Attributes == info.baseValue.Attributes) {
                     differenceDegree |= DifferenceDegree.NonBreaking;
                 } else {
                     differenceDegree |= DifferenceDegree.Breaking;
@@ -228,13 +229,13 @@ namespace Ghbvft6.Synver {
 
             output.AppendLine("[changed]");
             foreach (var info in fieldDifferences.Different) {
-                output.AppendLine(info.Value1.ToUniqueString());
+                output.AppendLine(info.modifiedValue.ToUniqueString());
             }
             foreach (var info in propertyDifferences.Different) {
-                output.AppendLine(info.Value1.ToUniqueString());
+                output.AppendLine(info.modifiedValue.ToUniqueString());
             }
             foreach (var info in methodDifferences.Different) {
-                output.AppendLine(info.Value1.ToUniqueString());
+                output.AppendLine(info.modifiedValue.ToUniqueString());
             }
             output.AppendLine("");
             output.AppendLine("[deleted]");
@@ -262,23 +263,23 @@ namespace Ghbvft6.Synver {
             Console.WriteLine(output);
         }
 
-        private static void CompareAssemblies(Version version, Assembly assembly1, Assembly assembly2) {
+        private static void CompareAssemblies(Version version, Assembly baseAssembly, Assembly modifiedAssembly) {
             var bindingAttr = BindingFlags.Instance | BindingFlags.Static | BindingFlags.Public;
 
-            var fieldInfosDiff = CompareFieldInfoLists(assembly1, assembly2, bindingAttr);
-            var propertyInfosDiff = ComparePropertyInfoLists(assembly1, assembly2, bindingAttr);
-            var methodInfosDiff = CompareMethodInfoLists(assembly1, assembly2, bindingAttr);
+            var fieldInfosDiff = GetFieldInfoDifferences(baseAssembly, modifiedAssembly, bindingAttr);
+            var propertyInfosDiff = GetPropertyInfoDifferences(baseAssembly, modifiedAssembly, bindingAttr);
+            var methodInfosDiff = GetMethodInfoDifferences(baseAssembly, modifiedAssembly, bindingAttr);
             var differenceDegree = GetPublicMemberInfosDifferenceDegree(fieldInfosDiff, propertyInfosDiff, methodInfosDiff);
 
             bindingAttr = BindingFlags.Instance | BindingFlags.Static | BindingFlags.NonPublic;
             differenceDegree |= GetPrivateMemberInfosDifferenceDegree<MemberInfo>(
-                CompareFieldInfoLists(assembly1, assembly2, bindingAttr),
-                ComparePropertyInfoLists(assembly1, assembly2, bindingAttr),
-                CompareMethodInfoLists(assembly1, assembly2, bindingAttr)
+                GetFieldInfoDifferences(baseAssembly, modifiedAssembly, bindingAttr),
+                GetPropertyInfoDifferences(baseAssembly, modifiedAssembly, bindingAttr),
+                GetMethodInfoDifferences(baseAssembly, modifiedAssembly, bindingAttr)
             );
 
             if (differenceDegree == DifferenceDegree.None) {
-                differenceDegree |= File.ReadAllBytes(assembly1.Location).SequenceEqual(File.ReadAllBytes(assembly2.Location)) ? DifferenceDegree.None : DifferenceDegree.NonBreaking;
+                differenceDegree |= File.ReadAllBytes(baseAssembly.Location).SequenceEqual(File.ReadAllBytes(modifiedAssembly.Location)) ? DifferenceDegree.None : DifferenceDegree.NonBreaking;
             }
 
             Console.WriteLine(version.Bump(differenceDegree));
@@ -286,15 +287,15 @@ namespace Ghbvft6.Synver {
             PrintDifferences(fieldInfosDiff, propertyInfosDiff, methodInfosDiff);
         }
 
-        private static void CompareAssemblies(string path1, string path2) {
+        private static void CompareAssemblies(string baseAssemblyPath, string modifiedAssemblyPath) {
             var runtimeAssemblies = Directory.GetFiles(RuntimeEnvironment.GetRuntimeDirectory(), "*.dll");
             var assemblyPaths = new List<string>(runtimeAssemblies);
 
-            var assemblies1 = Directory.GetFiles(Path.GetDirectoryName(path1)!, "*.dll", new EnumerationOptions { RecurseSubdirectories = true });
-            assemblyPaths.AddRange(assemblies1);
+            var baseAssemblies = Directory.GetFiles(Path.GetDirectoryName(baseAssemblyPath)!, "*.dll", new EnumerationOptions { RecurseSubdirectories = true });
+            assemblyPaths.AddRange(baseAssemblies);
 
-            var assemblies2 = Directory.GetFiles(Path.GetDirectoryName(path2)!, "*.dll", new EnumerationOptions { RecurseSubdirectories = true });
-            assemblyPaths.AddRange(assemblies2);
+            var modofiedAssemblies = Directory.GetFiles(Path.GetDirectoryName(modifiedAssemblyPath)!, "*.dll", new EnumerationOptions { RecurseSubdirectories = true });
+            assemblyPaths.AddRange(modofiedAssemblies);
 
             // fails to find globalPackagesFolder on GitHub Actions
             // System.IO.DirectoryNotFoundException: Could not find a part of the path '/home/runner/.nuget/packages'.
@@ -312,13 +313,13 @@ namespace Ghbvft6.Synver {
                 }
             }
 
-            Assembly assembly1 = new MetadataLoadContext(new PathAssemblyResolver(assemblyPaths)).LoadFromAssemblyPath(path1);
-            Assembly assembly2 = new MetadataLoadContext(new PathAssemblyResolver(assemblyPaths)).LoadFromAssemblyPath(path2);
+            Assembly baseAssembly = new MetadataLoadContext(new PathAssemblyResolver(assemblyPaths)).LoadFromAssemblyPath(baseAssemblyPath);
+            Assembly modifiedAssembly = new MetadataLoadContext(new PathAssemblyResolver(assemblyPaths)).LoadFromAssemblyPath(modifiedAssemblyPath);
 
-            var assemblyVersion = assembly1.GetName().Version!;
+            var assemblyVersion = baseAssembly.GetName().Version!;
             var version = Configuration.version != "" ? new Version(Configuration.version) : new Version(assemblyVersion.Major, assemblyVersion.Minor, assemblyVersion.Build);
 
-            CompareAssemblies(version, assembly1, assembly2);
+            CompareAssemblies(version, baseAssembly, modifiedAssembly);
         }
 
         static void Main(string[] args) {
@@ -326,7 +327,7 @@ namespace Ghbvft6.Synver {
                 Configuration.version = args.Count() > 2 ? args[2] : Configuration.version;
                 CompareAssemblies(args[0], args[1]);
             } catch (Exception e) {
-                Console.WriteLine("synver NEW_DLL_PATH OLD_DLL_PATH [VERSION]");
+                Console.WriteLine("synver <OLD_DLL_PATH> <NEW_DLL_PATH> [VERSION]");
                 Console.WriteLine("");
                 Console.WriteLine(e);
                 Environment.Exit(1);
